@@ -193,6 +193,38 @@ app.post('/api/records', authMiddleware, async (req, res) => {
     }
 });
 
+// 챌린지 순위 업데이트 엔드포인트
+// 이 엔드포인트는 인증 미들웨어(authMiddleware)가 적용되어 로그인된 사용자만 접근할 수 있습니다.
+app.put('/challenges/:id/rank', authMiddleware, async (req, res) => {
+    const challengeId = req.params.id;
+    const { newRank } = req.body;
+
+    if (typeof newRank !== 'number' || newRank <= 0) {
+        return res.status(400).json({ message: '유효한 순위(number)를 입력해주세요.' });
+    }
+
+    try {
+        const challengeRef = db.collection('challenges').doc(challengeId);
+        const doc = await challengeRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ message: '업데이트할 챌린지를 찾을 수 없습니다.' });
+        }
+
+        // Firestore 문서 업데이트
+        await challengeRef.update({
+            rank: newRank,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.status(200).json({ message: `챌린지 ${challengeId}의 순위가 ${newRank}로 업데이트되었습니다.` });
+
+    } catch (error) {
+        console.error(`챌린지 순위 업데이트 중 오류 발생:`, error);
+        res.status(500).json({ message: '서버 오류가 발생했습니다.', error: error.message });
+    }
+});
+
 
 // 서버 시작
 app.listen(PORT, () => {
