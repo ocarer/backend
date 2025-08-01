@@ -136,11 +136,12 @@ app.post('/api/login', async (req, res) => {
 });
 
 // 모든 챌린지 목록을 가져오는 API 엔드포인트
+// 데이터베이스에서 순위별로 정렬된 전체 챌린지를 가져옵니다.
 app.get('/challenges', async (req, res) => {
     console.log('GET /challenges 요청이 들어왔습니다.');
     try {
         const challengesCollection = db.collection('challenges');
-        const snapshot = await challengesCollection.orderBy('rank').get(); // 순위별 정렬
+        const snapshot = await challengesCollection.orderBy('rank').get(); // 순위(rank) 필드로 정렬
         const challenges = snapshot.docs.map(doc => doc.data());
         res.json(challenges);
     } catch (error) {
@@ -193,8 +194,8 @@ app.post('/api/records', authMiddleware, async (req, res) => {
     }
 });
 
+
 // 챌린지 순위 업데이트 엔드포인트
-// 이 엔드포인트는 인증 미들웨어(authMiddleware)가 적용되어 로그인된 사용자만 접근할 수 있습니다.
 app.put('/challenges/:id/rank', authMiddleware, async (req, res) => {
     const challengeId = req.params.id;
     const { newRank } = req.body;
