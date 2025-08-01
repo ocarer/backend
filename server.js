@@ -1,13 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt'); // 비밀번호 해싱을 위한 라이브러리
-const jwt = require('jsonwebtoken'); // JWT(JSON Web Token) 생성을 위한 라이브러리
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
 
 // Firebase Admin SDK 초기화
-// Render 환경 변수에서 서비스 계정 정보를 가져옵니다.
-// FIREBASE_CONFIG 환경 변수에 Firebase 서비스 계정 JSON 내용을 직접 붙여넣거나,
-// 각 필드를 개별 환경 변수로 설정할 수 있습니다. 여기서는 JSON 문자열을 파싱합니다.
 try {
     const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
     admin.initializeApp({
@@ -17,21 +14,21 @@ try {
 } catch (error) {
     console.error('Failed to initialize Firebase Admin SDK:', error);
     console.error('Please ensure FIREBASE_CONFIG environment variable is correctly set.');
-    process.exit(1); // Firebase 초기화 실패 시 앱 종료
+    process.exit(1);
 }
 
-const db = admin.firestore(); // Firestore 인스턴스 가져오기
+const db = admin.firestore();
 const app = express();
-const PORT = process.env.PORT || 10000; // Render는 기본적으로 10000 포트를 사용합니다.
+const PORT = process.env.PORT || 10000;
 
 // 미들웨어 설정
-app.use(cors()); // CORS 허용 (프론트엔드와 백엔드 도메인이 다를 경우 필수)
-app.use(express.json()); // JSON 요청 본문 파싱
+app.use(cors());
+app.use(express.json());
 
 // JWT 비밀 키 (환경 변수에서 가져옴)
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key'; // 실제 배포 시에는 강력한 비밀 키 사용
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
-// JWT 인증 미들웨어: 요청 헤더에 포함된 토큰을 검증합니다.
+// JWT 인증 미들웨어
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -45,12 +42,62 @@ const authMiddleware = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded; // 요청 객체에 사용자 정보 추가
+        req.user = decoded;
         next();
     } catch (error) {
         return res.status(403).json({ message: '유효하지 않거나 만료된 토큰입니다.' });
     }
 };
+
+// 챌린지 초기 데이터
+const challenges = [
+    {
+        id: '1', rank: 1, name: 'The Hell Challenge', difficulty: 'extreme_demon', description: '가장 높은 순위의 챌린지입니다.', creator: 'ChallengingCreator', verifier: 'GDVerifierPro', levelId: '20000001', views: 3500, completions: 12, isUpcoming: false, timestamp: new Date()
+    },
+    {
+        id: '2', rank: 2, name: 'Firewall', difficulty: 'insane_demon', description: '불의 벽을 뚫고 지나가는 컨셉의 챌린지입니다.', creator: 'FirewallMaster', verifier: 'Verifine', levelId: '20000002', views: 2800, completions: 25, isUpcoming: false, timestamp: new Date()
+    },
+    {
+        id: '3', rank: 3, name: 'The Abyss', difficulty: 'hard_demon', description: '어두운 심연 속으로 들어가는 듯한 분위기의 챌린지입니다.', creator: 'AbyssCreator', verifier: 'Darkness', levelId: '20000003', views: 2500, completions: 50, isUpcoming: false, timestamp: new Date()
+    },
+    {
+        id: '10', rank: 10, name: 'Forest Escape', difficulty: 'medium_demon', description: '평화로운 숲 속을 탈출하는 테마의 챌린지입니다.', creator: 'NatureLover', verifier: 'GreenLeaf', levelId: '20000010', views: 1500, completions: 120, isUpcoming: false, timestamp: new Date()
+    },
+    {
+        id: '15', rank: 15, name: 'Storm Breaker', difficulty: 'easy_demon', description: '폭풍우를 헤쳐나가는 테마의 챌린지입니다.', creator: 'WeatherMan', verifier: 'CloudJumper', levelId: '20000015', views: 1000, completions: 200, isUpcoming: false, timestamp: new Date()
+    },
+    {
+        id: '25', rank: 25, name: 'Ancient Ruins', difficulty: 'easy_demon', description: '오래된 유적을 탐험하는 테마의 챌린지입니다.', creator: 'Explorer', verifier: 'RelicHunter', levelId: '20000025', views: 800, completions: 350, isUpcoming: false, timestamp: new Date()
+    },
+    {
+        id: '101', rank: 101, name: 'Upcoming Challenge Alpha', difficulty: 'insane_demon', description: '새롭게 추가될 예정인 챌린지입니다.', creator: 'FutureCreator', verifier: 'TBD', levelId: '20000101', views: 50, completions: 0, isUpcoming: true, timestamp: new Date()
+    },
+    {
+        id: '102', rank: 102, name: 'Upcoming Challenge Beta', difficulty: 'medium_demon', description: '업커밍 챌린지 중 하나입니다.', creator: 'BetaTester', verifier: 'TBD', levelId: '20000102', views: 30, completions: 0, isUpcoming: true, timestamp: new Date()
+    }
+];
+
+// 서버 시작 시 챌린지 데이터 초기화 함수
+async function initializeChallenges() {
+    console.log('데이터베이스에서 챌린지 데이터 확인 중...');
+    const challengesCollection = db.collection('challenges');
+    const snapshot = await challengesCollection.get();
+
+    // 데이터가 없는 경우에만 초기화 진행
+    if (snapshot.empty) {
+        console.log('챌린지 데이터가 없어 초기 데이터를 추가합니다.');
+        const batch = db.batch();
+        challenges.forEach(challenge => {
+            const docRef = challengesCollection.doc(challenge.id);
+            batch.set(docRef, challenge);
+        });
+        await batch.commit();
+        console.log('초기 챌린지 데이터가 Firestore에 성공적으로 추가되었습니다.');
+    } else {
+        console.log('챌린지 데이터가 이미 존재합니다. 초기화를 건너뜁니다.');
+    }
+}
+
 
 // 루트 경로 테스트
 app.get('/', (req, res) => {
@@ -66,22 +113,19 @@ app.post('/api/signup', async (req, res) => {
     }
 
     try {
-        // 이메일 중복 확인
         const userRef = db.collection('users').doc(email);
         const doc = await userRef.get();
         if (doc.exists) {
             return res.status(409).json({ message: '이미 존재하는 이메일입니다.' });
         }
 
-        // 비밀번호 해싱
-        const hashedPassword = await bcrypt.hash(password, 10); // saltRounds 10
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Firestore에 사용자 저장
         await userRef.set({
             nickname,
             email,
-            password: hashedPassword, // 해싱된 비밀번호 저장
-            createdAt: admin.firestore.FieldValue.serverTimestamp() // 서버 타임스탬프
+            password: hashedPassword,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
         res.status(201).json({ message: '회원가입 성공! 이제 로그인해주세요.' });
@@ -100,7 +144,6 @@ app.post('/api/login', async (req, res) => {
     }
 
     try {
-        // 사용자 조회
         const userRef = db.collection('users').doc(email);
         const doc = await userRef.get();
 
@@ -109,19 +152,16 @@ app.post('/api/login', async (req, res) => {
         }
 
         const user = doc.data();
-
-        // 비밀번호 비교
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
             return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다.' });
         }
 
-        // JWT 토큰 생성
         const token = jwt.sign(
             { email: user.email, nickname: user.nickname },
             JWT_SECRET,
-            { expiresIn: '1h' } // 토큰 유효 기간 1시간
+            { expiresIn: '1h' }
         );
 
         res.status(200).json({
@@ -136,12 +176,11 @@ app.post('/api/login', async (req, res) => {
 });
 
 // 모든 챌린지 목록을 가져오는 API 엔드포인트
-// 데이터베이스에서 순위별로 정렬된 전체 챌린지를 가져옵니다.
 app.get('/challenges', async (req, res) => {
     console.log('GET /challenges 요청이 들어왔습니다.');
     try {
         const challengesCollection = db.collection('challenges');
-        const snapshot = await challengesCollection.orderBy('rank').get(); // 순위(rank) 필드로 정렬
+        const snapshot = await challengesCollection.orderBy('rank').get();
         const challenges = snapshot.docs.map(doc => doc.data());
         res.json(challenges);
     } catch (error) {
@@ -171,18 +210,17 @@ app.get('/challenges/:id', async (req, res) => {
 // 기록 제출 엔드포인트 (인증 미들웨어 적용)
 app.post('/api/records', authMiddleware, async (req, res) => {
     const recordData = req.body;
-    const { email } = req.user; // JWT 토큰에서 추출한 사용자 이메일
+    const { email } = req.user;
 
     if (!recordData.challengeId || !recordData.videoUrl) {
         return res.status(400).json({ message: '필수 기록 데이터(챌린지 ID, 영상 URL)가 누락되었습니다.' });
     }
 
     try {
-        // Firestore에 기록 저장
         const newRecord = {
             ...recordData,
-            submitter: email, // 제출자 정보를 토큰에서 가져온 이메일로 설정
-            submittedAt: admin.firestore.FieldValue.serverTimestamp() // 서버 타임스탬프
+            submitter: email,
+            submittedAt: admin.firestore.FieldValue.serverTimestamp()
         };
 
         const docRef = await db.collection('records').add(newRecord);
@@ -212,7 +250,6 @@ app.put('/challenges/:id/rank', authMiddleware, async (req, res) => {
             return res.status(404).json({ message: '업데이트할 챌린지를 찾을 수 없습니다.' });
         }
 
-        // Firestore 문서 업데이트
         await challengeRef.update({
             rank: newRank,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -228,7 +265,9 @@ app.put('/challenges/:id/rank', authMiddleware, async (req, res) => {
 
 
 // 서버 시작
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Backend server listening on port ${PORT}`);
     console.log(`Local access: http://localhost:${PORT}`);
+    // 서버 시작 시 데이터 초기화 로직 실행
+    await initializeChallenges();
 });
