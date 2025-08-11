@@ -3,6 +3,7 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
+const recordsRouter = require('./routes/records');
 
 // Firebase Admin SDK 초기화
 try {
@@ -24,6 +25,7 @@ const PORT = process.env.PORT || 10000;
 // 미들웨어 설정
 app.use(cors());
 app.use(express.json());
+app.use('/api/records', recordsRouter);
 
 // JWT 비밀 키 (환경 변수에서 가져옴)
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
@@ -271,3 +273,4 @@ app.listen(PORT, async () => {
     // 서버 시작 시 데이터 초기화 로직 실행
     await initializeChallenges();
 });
+
