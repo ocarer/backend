@@ -23,7 +23,9 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // 미들웨어 설정
-app.use(cors());
+app.use(cors({
+  origin: 'https://zre-challenge-lis.vercel.app'
+}));
 app.use(express.json());
 app.use('/api/records', recordsRouter);
 
@@ -273,4 +275,3 @@ app.listen(PORT, async () => {
     // 서버 시작 시 데이터 초기화 로직 실행
     await initializeChallenges();
 });
-
